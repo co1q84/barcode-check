@@ -260,7 +260,7 @@ class BaseRowEditor(tk.Toplevel):
         first_entry.selection_range(0, "end")
 
     def _candidate(self) -> Settings:
-        row = BaseRow(self.code.get(), self.manufacturer.get(), self.prefix.get())
+        row = BaseRow(self.code.get().strip(), self.manufacturer.get().strip(), self.prefix.get().strip())
         return edit_row(self.owner.settings, self.original, row)
 
     def _try_sample(self) -> None:

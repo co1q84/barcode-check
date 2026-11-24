@@ -1,6 +1,7 @@
 import re
 from collections.abc import Iterable
 from dataclasses import replace
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from xml.etree.ElementTree import ParseError, iterparse
@@ -10,6 +11,8 @@ from openpyxl import Workbook
 from openpyxl.cell.rich_text import CellRichText
 from openpyxl.reader.excel import ExcelReader
 from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.styles.numbers import BUILTIN_FORMATS_REVERSE
+from openpyxl.styles.stylesheet import apply_stylesheet
 from openpyxl.utils.cell import coordinate_to_tuple
 from openpyxl.utils.escape import unescape
 from openpyxl.utils.exceptions import InvalidFileException
@@ -21,6 +24,7 @@ from .settings import BaseRow, Settings
 COLUMNS = ("编码", "厂家", "条码前缀")
 _SHEET_NAME = "基表"
 _NON_TEXT = object()
+_IDENTIFIER_NUMBER_FORMATS = {BUILTIN_FORMATS_REVERSE[format_code] for format_code in ("General", "0", "@")}
 _XSTRING_ESCAPE = re.compile(r"_(?=x[0-9A-Fa-f]{4}_)|[\x00-\x08\x0b-\x1f\ufffe\uffff]")
 
 
@@ -89,13 +93,18 @@ def import_settings_workbook(path: Path, settings: Settings) -> Settings:
             sheet = relationships[sheets[0].id]
             if sheet.Type != f"{REL_NS}/worksheet":
                 raise ValueError("「基表」须为 Excel 工作表。")
+            try:
+                apply_stylesheet(reader.archive, reader.wb)
+            except (TypeError, ValueError, IndexError, AttributeError) as error:
+                raise ValueError("无法读取 Excel 单元格格式。") from error
+            number_formats = {str(index): style.numFmtId for index, style in enumerate(reader.wb._cell_styles)}
             shared_part = reader.package.find(SHARED_STRINGS)
             shared_strings = []
             if shared_part is not None:
                 with reader.archive.open(shared_part.PartName.lstrip("/")) as source:
                     shared_strings = [_xml_text(item) for item in _xml_children(source, "sst", "si")]
             with reader.archive.open(sheet.Target) as source:
-                return _import_rows(_worksheet_rows(source, shared_strings), settings)
+                return _import_rows(_worksheet_rows(source, shared_strings, number_formats), settings)
     except (BadZipFile, InvalidFileException, KeyError, ParseError) as error:
         raise ValueError("无法读取 Excel 工作簿。请选择有效的 .xlsx 文件。") from error
 
@@ -139,7 +148,20 @@ def _xml_text(node) -> str:
     )
 
 
-def _cell_value(cell, line: int, shared_strings: list[str]) -> object:
+def _numeric_identifier(value: str, number_format: int | None) -> str | None:
+    if number_format not in _IDENTIFIER_NUMBER_FORMATS:
+        return None
+    try:
+        number = Decimal(value)
+    except InvalidOperation:
+        return None
+    # Excel preserves up to 15 significant digits in a numeric cell.
+    if not number.is_finite() or not 0 <= number < 10**15 or number != number.to_integral_value():
+        return None
+    return str(int(number))
+
+
+def _cell_value(cell, line: int, column: int, shared_strings: list[str], number_formats: dict[str, int]) -> object:
     if cell.find(_tag("f")) is not None:
         return _NON_TEXT
     cell_type = cell.get("t")
@@ -155,10 +177,16 @@ def _cell_value(cell, line: int, shared_strings: list[str]) -> object:
         except ValueError:
             pass
         raise ValueError(f"第 {line} 行的 Excel 文本索引无效。")
+    if value and cell_type in (None, "n") and line > 1 and column in (1, 3):
+        identifier = _numeric_identifier(value, number_formats.get(cell.get("s", "0")))
+        if identifier is None:
+            label = COLUMNS[column - 1]
+            raise ValueError(f"第 {line} 行「{label}」请以文本填写，或使用常规格式的非负整数（最多 15 位）。")
+        return identifier
     return _NON_TEXT if value else None
 
 
-def _worksheet_rows(source, shared_strings: list[str]):
+def _worksheet_rows(source, shared_strings: list[str], number_formats: dict[str, int]):
     previous_line = 0
     for row in _xml_children(source, "sheetData", "row"):
         try:
@@ -179,7 +207,7 @@ def _worksheet_rows(source, shared_strings: list[str]):
             if cell_line != line or not column < cell_column <= 16384:
                 raise ValueError(f"第 {line} 行的 Excel 单元格位置重复、乱序或超出范围。")
             column = cell_column
-            value = _cell_value(cell, line, shared_strings)
+            value = _cell_value(cell, line, column, shared_strings, number_formats)
             if value is not None:
                 cells[column] = value
         yield line, cells
@@ -203,7 +231,9 @@ def _import_rows(rows, settings: Settings) -> Settings:
         data = []
         for column, label in enumerate(COLUMNS, 1):
             value = cells.get(column)
-            if value is None or (isinstance(value, str) and not value.strip()):
+            if isinstance(value, str):
+                value = value.strip()
+            if value is None or value == "":
                 raise ValueError(f"第 {line} 行「{label}」不能为空。")
             if not isinstance(value, str):
                 raise ValueError(f"第 {line} 行「{label}」必须填写文本。")

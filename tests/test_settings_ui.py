@@ -38,6 +38,39 @@ class SettingsWindowTests(unittest.TestCase):
         editor.save_button.invoke()
         self.root.update()
 
+    def test_trial_and_save_trim_padding_from_base_row_entries(self):
+        self.window.new_button.invoke()
+        editor = self.editor()
+        body = editor.winfo_children()[0]
+        for row, value in enumerate(("0007\r\n", " 甲 厂\t", "51685528**H\n")):
+            entry = body.grid_slaves(row=row, column=1)[0]
+            entry.insert(0, value)
+
+        editor.sample.set("51685528**H123\r\n")
+        editor.try_button.invoke()
+        self.assertEqual(editor.trial.cget("text"), "命中前缀 51685528**H · 编码 0007 · 厂家 甲 厂")
+        self.assertFalse(self.store.path.exists())
+
+        editor.save_button.invoke()
+        self.assertFalse(editor.winfo_exists())
+        self.assertEqual(self.store.load().rows, (BaseRow("0007", "甲 厂", "51685528**H"),))
+
+    def test_trial_and_save_reject_blank_or_multiline_base_row_fields(self):
+        self.window.new_button.invoke()
+        editor = self.editor()
+        editor.manufacturer.set("甲厂")
+        editor.prefix.set("51685528**H")
+        editor.sample.set("51685528**H123")
+
+        for code in (" \t\r\n", "00\n07\r\n"):
+            with self.subTest(code=code):
+                editor.code.set(code)
+                editor.try_button.invoke()
+                self.assertIn("编码须为非空的单行文本", editor.trial.cget("text"))
+                editor.save_button.invoke()
+                self.assertIn("编码须为非空的单行文本", editor.error.get())
+                self.assertFalse(self.store.path.exists())
+
     def test_single_table_add_edit_search_and_batch_delete(self):
         table = self.window.table
         self.assertEqual([table.heading(col, "text") for col in table["columns"]], ["编码", "厂家", "条码前缀"])
@@ -78,8 +111,8 @@ class SettingsWindowTests(unittest.TestCase):
         workbook = load_workbook(template)
         sheet = workbook["基表"]
         self.assertEqual(tuple(cell.value for cell in sheet[1]), ("编码", "厂家", "条码前缀"))
-        for line, prefix in ((2, "000"), (3, "001")):
-            for column, value in enumerate(("0007", "甲厂", prefix), 1):
+        for line, code, prefix in ((2, 51685528, "000"), (3, "51685528\n", "001")):
+            for column, value in enumerate((code, "甲厂", prefix), 1):
                 sheet.cell(line, column, value)
         incoming = self.folder / "incoming.xlsx"
         workbook.save(incoming)
@@ -96,7 +129,7 @@ class SettingsWindowTests(unittest.TestCase):
         workbook.close()
         with patch("barcode_check.settings_ui.filedialog.askopenfilename", return_value=str(incoming)):
             self.window.import_button.invoke()
-        self.assertEqual(self.store.load().rows, (BaseRow("0007", "甲厂", "000"),))
+        self.assertEqual(self.store.load().rows, (BaseRow("51685528", "甲厂", "000"),))
         saved_bytes = self.store.path.read_bytes()
         with patch("barcode_check.settings_ui.filedialog.askopenfilename", return_value=str(incoming)):
             with patch("barcode_check.settings_ui.messagebox.showerror") as error:
@@ -108,6 +141,6 @@ class SettingsWindowTests(unittest.TestCase):
             self.window.export_button.invoke()
         exported = load_workbook(output)
         try:
-            self.assertEqual(tuple(cell.value for cell in exported["基表"][2]), ("0007", "甲厂", "000"))
+            self.assertEqual(tuple(cell.value for cell in exported["基表"][2]), ("51685528", "甲厂", "000"))
         finally:
             exported.close()

@@ -81,6 +81,26 @@ class SettingsWorkbookTests(unittest.TestCase):
         self.assertEqual(workbook.active["C3"].data_type, "s")
         self.assertEqual(import_settings_workbook(self.path, Settings()).rows, rows)
 
+    def test_import_accepts_integer_identifiers_and_trims_text_fields(self):
+        self.write_input(
+            HEADERS,
+            (" 0007\r\n", " 甲 厂\t", 51685528),
+            (None, None, None),
+            (None, None, None),
+            (None, None, None),
+            (None, None, None),
+            (None, None, None),
+            (123456789012345, "乙厂", " 51685528**H\n"),
+        )
+
+        updated = import_settings_workbook(self.path, Settings())
+
+        self.assertEqual(updated.rows, (
+            BaseRow("0007", "甲 厂", "51685528"),
+            BaseRow("123456789012345", "乙厂", "51685528**H"),
+        ))
+        self.assertEqual(updated.match("51685528**H123"), updated.rows[1])
+
     def test_preserves_literal_escape_markers_and_barcode_separators(self):
         row = BaseRow("001", "甲厂", "00_x000D_x0041_01" + chr(29) + "AXx005F_")
         write_settings_workbook(self.path, (row,))
@@ -151,12 +171,15 @@ class SettingsWorkbookTests(unittest.TestCase):
         original = BaseRow("001", "甲厂", "01")
         current = Settings((original,))
         for invalid, message in (
-            ((12, "乙厂", "02"), "第 4 行.*编码.*文本"),
+            ((12.5, "乙厂", "02"), "第 4 行.*编码.*文本"),
+            ((-12, "乙厂", "02"), "第 4 行.*编码.*文本"),
+            ((1234567890123456, "乙厂", "02"), "第 4 行.*编码.*文本"),
+            ((date(2024, 1, 1), "乙厂", "02"), "第 4 行.*编码.*文本"),
+            (("002", 12, "02"), "第 4 行.*厂家.*文本"),
             (("002", date(2024, 1, 1), "02"), "第 4 行.*厂家.*文本"),
             (("002", "乙厂", "=1+2"), "第 4 行.*条码前缀.*文本"),
             (("002", "乙厂", None), "第 4 行.*条码前缀.*空"),
             (("002", "乙厂", " \t "), "第 4 行.*条码前缀.*空"),
-            (("002 ", "乙厂", "02"), "第 4 行.*编码.*首尾"),
             (("002", "乙厂", "02\n03"), "第 4 行.*条码前缀.*单行"),
             (("002", "乙厂", "02", "备注"), "第 4 行.*三列"),
         ):
@@ -189,7 +212,7 @@ class SettingsWorkbookTests(unittest.TestCase):
                     import_settings_workbook(self.path, current)
                 self.assertEqual(current.rows, (existing,))
 
-        self.write_input(HEADERS, ("002", "乙厂", "02"), ("002", "乙厂", "03"))
+        self.write_input(HEADERS, ("2\r\n", "乙厂", "02"), (2, "乙厂", "03"))
         with self.assertRaisesRegex(ValueError, "第 3 行.*编码和厂家.*重复"):
             import_settings_workbook(self.path, Settings())
 
