@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-24T14:36:59.2113534+08:00",
+  "title": "设计系统 · 条码核验",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "操作蓝",
+        "tonalRamp": ["oklch(15% 0.041 260.0)", "oklch(26% 0.079 260.0)", "oklch(38% 0.120 260.0)", "oklch(49% 0.145 260.0)", "oklch(61% 0.142 260.0)", "oklch(72% 0.113 260.0)", "oklch(84% 0.068 260.0)", "oklch(95% 0.025 260.0)"]
+      },
+      "primary-active": {
+        "role": "primary",
+        "displayName": "深操作蓝",
+        "tonalRamp": ["oklch(15% 0.038 260.0)", "oklch(26% 0.073 260.0)", "oklch(38% 0.111 260.0)", "oklch(49% 0.134 260.0)", "oklch(61% 0.131 260.0)", "oklch(72% 0.105 260.0)", "oklch(84% 0.063 260.0)", "oklch(95% 0.023 260.0)"]
+      },
+      "primary-soft": {
+        "role": "primary",
+        "displayName": "浅操作蓝",
+        "tonalRamp": ["oklch(15% 0.004 259.4)", "oklch(26% 0.008 259.4)", "oklch(38% 0.013 259.4)", "oklch(49% 0.015 259.4)", "oklch(61% 0.015 259.4)", "oklch(72% 0.012 259.4)", "oklch(84% 0.007 259.4)", "oklch(95% 0.003 259.4)"]
+      },
+      "success": {
+        "role": "status",
+        "displayName": "通过绿",
+        "tonalRamp": ["oklch(15% 0.022 163.6)", "oklch(26% 0.043 163.6)", "oklch(38% 0.065 163.6)", "oklch(49% 0.079 163.6)", "oklch(61% 0.077 163.6)", "oklch(72% 0.062 163.6)", "oklch(84% 0.037 163.6)", "oklch(95% 0.014 163.6)"]
+      },
+      "success-soft": {
+        "role": "status",
+        "displayName": "浅通过绿",
+        "tonalRamp": ["oklch(15% 0.004 164.7)", "oklch(26% 0.007 164.7)", "oklch(38% 0.011 164.7)", "oklch(49% 0.014 164.7)", "oklch(61% 0.013 164.7)", "oklch(72% 0.011 164.7)", "oklch(84% 0.006 164.7)", "oklch(95% 0.002 164.7)"]
+      },
+      "warning": {
+        "role": "status",
+        "displayName": "提醒棕",
+        "tonalRamp": ["oklch(15% 0.028 56.6)", "oklch(26% 0.055 56.6)", "oklch(38% 0.083 56.6)", "oklch(49% 0.100 56.6)", "oklch(61% 0.098 56.6)", "oklch(72% 0.079 56.6)", "oklch(84% 0.047 56.6)", "oklch(95% 0.017 56.6)"]
+      },
+      "warning-soft": {
+        "role": "status",
+        "displayName": "浅提醒棕",
+        "tonalRamp": ["oklch(15% 0.008 81.8)", "oklch(26% 0.015 81.8)", "oklch(38% 0.023 81.8)", "oklch(49% 0.028 81.8)", "oklch(61% 0.027 81.8)", "oklch(72% 0.022 81.8)", "oklch(84% 0.013 81.8)", "oklch(95% 0.005 81.8)"]
+      },
+      "scan-alert-warning": {
+        "role": "status",
+        "displayName": "扫码区琥珀告警底色"
+      },
+      "error": {
+        "role": "status",
+        "displayName": "异常红",
+        "tonalRamp": ["oklch(15% 0.041 21.9)", "oklch(26% 0.079 21.9)", "oklch(38% 0.121 21.9)", "oklch(49% 0.146 21.9)", "oklch(61% 0.143 21.9)", "oklch(72% 0.114 21.9)", "oklch(84% 0.068 21.9)", "oklch(95% 0.025 21.9)"]
+      },
+      "error-soft": {
+        "role": "status",
+        "displayName": "浅异常红",
+        "tonalRamp": ["oklch(15% 0.004 8.2)", "oklch(26% 0.008 8.2)", "oklch(38% 0.012 8.2)", "oklch(49% 0.015 8.2)", "oklch(61% 0.015 8.2)", "oklch(72% 0.012 8.2)", "oklch(84% 0.007 8.2)", "oklch(95% 0.003 8.2)"]
+      },
+      "scan-alert-error": {
+        "role": "status",
+        "displayName": "扫码区异常红底色"
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "窗口浅灰",
+        "tonalRamp": ["oklch(15% 0.001 264.5)", "oklch(26% 0.003 264.5)", "oklch(38% 0.004 264.5)", "oklch(49% 0.005 264.5)", "oklch(61% 0.005 264.5)", "oklch(72% 0.004 264.5)", "oklch(84% 0.002 264.5)", "oklch(95% 0.001 264.5)"]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "内容白",
+        "tonalRamp": ["oklch(15% 0.000 0.0)", "oklch(26% 0.000 0.0)", "oklch(38% 0.000 0.0)", "oklch(49% 0.000 0.0)", "oklch(61% 0.000 0.0)", "oklch(72% 0.000 0.0)", "oklch(84% 0.000 0.0)", "oklch(95% 0.000 0.0)"]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "描边灰",
+        "tonalRamp": ["oklch(15% 0.005 255.5)", "oklch(26% 0.010 255.5)", "oklch(38% 0.015 255.5)", "oklch(49% 0.018 255.5)", "oklch(61% 0.017 255.5)", "oklch(72% 0.014 255.5)", "oklch(84% 0.008 255.5)", "oklch(95% 0.003 255.5)"]
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "正文深蓝灰",
+        "tonalRamp": ["oklch(15% 0.012 256.9)", "oklch(26% 0.022 256.9)", "oklch(38% 0.034 256.9)", "oklch(49% 0.041 256.9)", "oklch(61% 0.040 256.9)", "oklch(72% 0.032 256.9)", "oklch(84% 0.019 256.9)", "oklch(95% 0.007 256.9)"]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "辅助蓝灰",
+        "tonalRamp": ["oklch(15% 0.011 257.4)", "oklch(26% 0.021 257.4)", "oklch(38% 0.032 257.4)", "oklch(49% 0.039 257.4)", "oklch(61% 0.038 257.4)", "oklch(72% 0.030 257.4)", "oklch(84% 0.018 257.4)", "oklch(95% 0.007 257.4)"]
+      },
+      "table-heading": {
+        "role": "neutral",
+        "displayName": "表头蓝灰",
+        "tonalRamp": ["oklch(15% 0.003 255.5)", "oklch(26% 0.006 255.5)", "oklch(38% 0.010 255.5)", "oklch(49% 0.012 255.5)", "oklch(61% 0.011 255.5)", "oklch(72% 0.009 255.5)", "oklch(84% 0.005 255.5)", "oklch(95% 0.002 255.5)"]
+      },
+      "progress-track": {
+        "role": "neutral",
+        "displayName": "进度轨道蓝灰",
+        "tonalRamp": ["oklch(15% 0.006 259.8)", "oklch(26% 0.012 259.8)", "oklch(38% 0.018 259.8)", "oklch(49% 0.022 259.8)", "oklch(61% 0.022 259.8)", "oklch(72% 0.017 259.8)", "oklch(84% 0.010 259.8)", "oklch(95% 0.004 259.8)"]
+      }
+    },
+    "typographyMeta": {
+      "quantity": {
+        "displayName": "有效数量"
+      },
+      "section": {
+        "displayName": "区块标题"
+      },
+      "scan": {
+        "displayName": "扫码输入"
+      },
+      "feedback-body": {
+        "displayName": "扫码提示说明"
+      },
+      "feedback-manufacturer": {
+        "displayName": "扫码提示的厂家名称"
+      },
+      "table-heading": {
+        "displayName": "表头"
+      },
+      "body": {
+        "displayName": "正文与控件"
+      }
+    }
+  },
+  "components": [
+    {
+      "name": "主按钮",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "文档预览。用于当前主操作。",
+      "html": "<button type=\"button\" class=\"ds-button ds-button-primary\">开始核验</button>",
+      "css": ".ds-button { font: 400 10pt \"Microsoft YaHei UI\", sans-serif; padding: 6px 11px; border: 1px solid #D6DFEB; background: #FFFFFF; color: #17263B; } .ds-button:hover, .ds-button:active { background: #EAF1FC; } .ds-button:focus-visible { outline: 1px solid #235BB7; outline-offset: -2px; } .ds-button:disabled { background: #F4F6FA; color: #53637A; } .ds-button-primary { color: #FFFFFF; border-color: #235BB7; background: #235BB7; } .ds-button-primary:hover, .ds-button-primary:active { background: #194C9F; } .ds-button-primary:focus-visible { outline-color: #FFFFFF; }"
+    },
+    {
+      "name": "普通按钮",
+      "kind": "button",
+      "refersTo": "button-standard",
+      "description": "文档预览。用于设置、导入和取消等操作。",
+      "html": "<button type=\"button\" class=\"ds-button\">设置</button>",
+      "css": ".ds-button { font: 400 10pt \"Microsoft YaHei UI\", sans-serif; padding: 6px 11px; border: 1px solid #D6DFEB; background: #FFFFFF; color: #17263B; } .ds-button:hover, .ds-button:active { background: #EAF1FC; } .ds-button:focus-visible { outline: 1px solid #235BB7; outline-offset: -2px; } .ds-button:disabled { background: #F4F6FA; color: #53637A; }"
+    },
+    {
+      "name": "删除按钮",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "文档预览。白底红字提示删除操作。",
+      "html": "<button type=\"button\" class=\"ds-button ds-button-danger\">批量删除</button>",
+      "css": ".ds-button { font: 400 10pt \"Microsoft YaHei UI\", sans-serif; padding: 6px 11px; border: 1px solid #D6DFEB; background: #FFFFFF; color: #17263B; } .ds-button:hover, .ds-button:active { background: #EAF1FC; } .ds-button:focus-visible { outline: 1px solid #235BB7; outline-offset: -2px; } .ds-button:disabled { background: #F4F6FA; color: #53637A; } .ds-button-danger { color: #A42932; }"
+    },
+    {
+      "name": "普通输入框",
+      "kind": "input",
+      "refersTo": "text-entry",
+      "description": "文档预览。白色输入区获得焦点后使用蓝色边线。",
+      "html": "<label class=\"ds-field\">物料编码<input type=\"text\" value=\"0015\"></label>",
+      "css": ".ds-field { display: grid; gap: 6px; font: 400 10pt \"Microsoft YaHei UI\", sans-serif; color: #53637A; } .ds-field > input { min-width: 0; font: inherit; color: #17263B; background: #FFFFFF; border: 1px solid #D6DFEB; padding: 6px 8px; } .ds-field > input:focus-visible { border-color: #235BB7; outline: 1px solid #235BB7; outline-offset: -1px; } .ds-field > input:disabled { background: #F4F6FA; color: #53637A; }"
+    },
+    {
+      "name": "扫码输入框",
+      "kind": "input",
+      "refersTo": "scan-entry",
+      "description": "文档预览。增加字号与留白，供扫码枪或手工输入。",
+      "html": "<label class=\"ds-field ds-field-scan\">连续扫码<input type=\"text\" value=\"000100000002\"></label>",
+      "css": ".ds-field { display: grid; gap: 6px; font: 400 10pt \"Microsoft YaHei UI\", sans-serif; color: #53637A; } .ds-field > input { min-width: 0; font: inherit; color: #17263B; background: #FFFFFF; border: 1px solid #D6DFEB; padding: 6px 8px; } .ds-field > input:focus-visible { border-color: #235BB7; outline: 1px solid #235BB7; outline-offset: -1px; } .ds-field > input:disabled { background: #F4F6FA; color: #53637A; } .ds-field-scan { color: #17263B; font-size: 12pt; font-weight: 700; } .ds-field-scan > input { font-weight: 400; padding: 9px 10px; }"
+    },
+    {
+      "name": "最近扫码结果",
+      "kind": "custom",
+      "refersTo": "scan-feedback",
+      "description": "文档预览。扫码结果居中，厂家名称用大号粗体显示。",
+      "html": "<div class=\"ds-feedback\" role=\"status\">厂家不符 · 应为 <strong>华南一厂</strong>，识别为 <strong>东城二厂</strong>。</div>",
+      "css": ".ds-feedback { font: 400 18pt \"Microsoft YaHei UI\", sans-serif; background: #FCEDEF; color: #A42932; padding: 5px 10px; min-height: 58px; box-sizing: border-box; text-align: center; align-content: center; } .ds-feedback strong { font-size: 24pt; font-weight: 700; }"
+    },
+    {
+      "name": "记录表",
+      "kind": "custom",
+      "refersTo": "table-heading",
+      "description": "文档预览。浅蓝灰表头和明文结果便于扫读。",
+      "html": "<table class=\"ds-records\"><thead><tr><th scope=\"col\">条码</th><th scope=\"col\">厂家</th><th scope=\"col\">结果</th><th scope=\"col\">说明</th></tr></thead><tbody><tr><td>000100000002</td><td>华南一厂</td><td>通过</td><td>核验通过。</td></tr><tr class=\"ds-record-rejected\"><td>000200000001</td><td>东城二厂</td><td>厂家不符</td><td>应为华南一厂，识别为东城二厂。</td></tr></tbody></table>",
+      "css": ".ds-records { width: 100%; border-collapse: collapse; background: #FFFFFF; color: #17263B; border: 1px solid #D6DFEB; font: 400 10pt \"Microsoft YaHei UI\", sans-serif; } .ds-records th { background: #EAF0F8; font-weight: 700; text-align: left; padding: 6px 7px; } .ds-records td { padding: 5px 4px; } .ds-record-rejected { color: #A42932; background: #FFF6F7; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "连续扫码",
+    "overview": "浅灰底上用白色区域分开填写、扫码和读数。作业员视线沿核验目标、扫码结果、记录自然下移，主操作和键盘焦点共用蓝色。设置沿用白底、浅灰表头和同一套控件。视觉取值对应 [Tkinter 主题](barcode_check/theme.py)。",
+    "keyCharacteristics": [
+      "核验目标固定在顶部，扫码框和有效数量并排。",
+      "扫码与数量区在异常时同步着色并播放 Windows 提示音，原因随记录保留。",
+      "记录区优先获得窗口空间，底部可翻页并选择每页条数。"
+    ],
+    "rules": [],
+    "dos": [
+      "保留扫码框、最近结果和有效数量在同一视线范围内。",
+      "状态色始终配合可读的状态词或原因，缩小窗口时仍可选中记录查看完整说明。",
+      "让记录表吸收窗口高度变化，让条码、厂家和说明列吸收宽度变化。"
+    ],
+    "donts": []
+  }
+}
