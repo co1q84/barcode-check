@@ -1,3 +1,4 @@
+import struct
 import unittest
 from datetime import date
 from pathlib import Path
@@ -109,6 +110,20 @@ class SettingsWorkbookTests(unittest.TestCase):
             data = archive.read("xl/worksheets/sheet1.xml")
             self.assertIn(b"00_x005F_x000D_x005F_x0041_01_x001D_AXx005F_", data)
 
+    def test_import_preserves_escaped_separators_at_prefix_edges(self):
+        self.write_input(HEADERS, (" 001 ", " 甲厂 ", " LEADING "), ("002", "乙厂", "TRAILING"))
+        self.change_xml(lambda sheet: sheet.replace("LEADING", "_x001D_AA").replace("TRAILING", "AA_x001D_"))
+
+        updated = import_settings_workbook(self.path, Settings())
+
+        self.assertEqual(
+            [(row.code, row.manufacturer, row.prefix) for row in updated.rows],
+            [("001", "甲厂", "\x1dAA"), ("002", "乙厂", "AA\x1d")],
+        )
+        self.assertEqual(updated.match("\x1dAAother"), updated.rows[0])
+        self.assertEqual(updated.match("AA\x1dother"), updated.rows[1])
+        self.assertIsNone(updated.match("AAother"))
+
     def test_shared_string_text_is_exact_and_rejects_invalid_reference_or_line_break(self):
         for value, index, message in (
             ("AXx005F_01", 0, None),
@@ -166,6 +181,22 @@ class SettingsWorkbookTests(unittest.TestCase):
                 self.write_input(headers, sheet_name=sheet_name, extra_sheet=extra_sheet)
                 with self.assertRaisesRegex(ValueError, message):
                     import_settings_workbook(self.path, Settings())
+
+    def test_unreadable_compressed_sheet_reports_a_workbook_error(self):
+        self.write_input(HEADERS, ("001", "甲厂", "AA"))
+        with ZipFile(self.path) as archive:
+            header = archive.getinfo("xl/worksheets/sheet1.xml").header_offset
+        data = bytearray(self.path.read_bytes())
+        filename_length, extra_length = struct.unpack_from("<HH", data, header + 26)
+        compressed_start = header + 30 + filename_length + extra_length
+        data[compressed_start] |= 0b110  # DEFLATE block type 3 is invalid.
+        self.path.write_bytes(data)
+        original = Settings((BaseRow("002", "乙厂", "BB"),))
+
+        with self.assertRaisesRegex(ValueError, "无法读取 Excel 工作簿"):
+            import_settings_workbook(self.path, original)
+
+        self.assertEqual(original.rows, (BaseRow("002", "乙厂", "BB"),))
 
     def test_rejects_missing_nontext_multiline_and_extra_fields_at_actual_row_without_appending(self):
         original = BaseRow("001", "甲厂", "01")

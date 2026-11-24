@@ -3,10 +3,12 @@ from datetime import datetime
 from enum import StrEnum
 from itertools import islice
 
-from .settings import BaseRow, Settings
+from .settings import BARCODE_INPUT_PADDING, BaseRow, Settings
 
 
-BARCODE_INPUT_PADDING = " \t\r\n"
+def barcode_preview(barcode: str) -> str:
+    text = barcode.replace("\r", "\\r").replace("\n", "\\n").replace("\0", "\\0")
+    return f"{text[:120]}…" if len(text) > 120 else text
 
 
 def is_valid_barcode(barcode: str) -> bool:

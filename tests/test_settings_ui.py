@@ -6,8 +6,9 @@ from unittest.mock import patch
 
 from openpyxl import load_workbook
 
-from barcode_check.settings import BaseRow, SettingsStore
+from barcode_check.settings import BaseRow, SettingsSaveCancelled, SettingsStore
 from barcode_check.settings_ui import BaseRowEditor, SettingsWindow
+from barcode_check.settings_xlsx import write_settings_workbook
 from barcode_check.theme import configure_theme
 
 
@@ -71,9 +72,86 @@ class SettingsWindowTests(unittest.TestCase):
                 self.assertIn("编码须为非空的单行文本", editor.error.get())
                 self.assertFalse(self.store.path.exists())
 
+    def test_enter_in_prefix_does_not_save_but_enter_in_trial_runs_match(self):
+        self.window.new_button.invoke()
+        editor = self.editor()
+        editor.code.set("0007")
+        editor.manufacturer.set("甲厂")
+        editor.prefix.set("AA")
+        body = editor.winfo_children()[0]
+        prefix_entry = body.grid_slaves(row=2, column=1)[0]
+        prefix_entry.focus_force()
+        self.root.update()
+        prefix_entry.event_generate("<Return>")
+        self.assertTrue(editor.winfo_exists())
+        self.assertFalse(self.store.path.exists())
+
+        trial_field = body.grid_slaves(row=4, column=1)[0]
+        trial_entry = next(widget for widget in trial_field.winfo_children() if widget.winfo_class() == "TEntry")
+        editor.sample.set("AA123")
+        trial_entry.focus_force()
+        self.root.update()
+        trial_entry.event_generate("<Return>")
+        self.assertIn("命中前缀 AA", editor.trial.cget("text"))
+        self.assertFalse(self.store.path.exists())
+
+        editor.save_button.invoke()
+        self.assertEqual(self.store.load().rows, (BaseRow("0007", "甲厂", "AA"),))
+
+    def test_trial_and_save_preserve_a_trailing_barcode_separator(self):
+        self.window.new_button.invoke()
+        editor = self.editor()
+        editor.code.set(" 0007\n")
+        editor.manufacturer.set(" 甲厂\t")
+        editor.prefix.set(" AA\x1d\r\n")
+        editor.sample.set("AAother")
+        editor.try_button.invoke()
+        self.assertIn("没有命中", editor.trial.cget("text"))
+
+        editor.sample.set("AA\x1dother\r\n")
+        editor.try_button.invoke()
+        self.assertIn("命中前缀", editor.trial.cget("text"))
+        editor.save_button.invoke()
+        self.assertEqual(self.store.load().rows, (BaseRow("0007", "甲厂", "AA\x1d"),))
+
+    def test_canceled_settings_save_keeps_data_and_editor_in_place(self):
+        self.add_row("001", "甲厂", "AA")
+        original = self.window.settings
+        saved = self.store.path.read_bytes()
+        incoming = self.folder / "incoming.xlsx"
+        write_settings_workbook(incoming, (BaseRow("002", "乙厂", "BB"),))
+        self.window.table.selection_set(self.window.table.get_children())
+        self.root.update()
+
+        with (
+            patch.object(self.window, "on_save", side_effect=SettingsSaveCancelled) as save,
+            patch.object(self.root, "report_callback_exception") as callback_error,
+            patch("barcode_check.settings_ui.messagebox.showerror") as error,
+        ):
+            with patch("barcode_check.settings_ui.messagebox.askyesno", return_value=True):
+                self.window.delete_button.invoke()
+            with patch("barcode_check.settings_ui.filedialog.askopenfilename", return_value=str(incoming)):
+                self.window.import_button.invoke()
+            self.window.edit_button.invoke()
+            editor = self.editor()
+            editor.prefix.set("CC")
+            editor.save_button.invoke()
+
+            self.assertEqual(save.call_count, 3)
+            error.assert_not_called()
+            callback_error.assert_not_called()
+        self.assertEqual(self.window.settings, original)
+        self.assertEqual(self.store.path.read_bytes(), saved)
+        self.assertTrue(editor.winfo_exists())
+        self.assertEqual(editor.prefix.get(), "CC")
+        self.assertEqual(editor.error.get(), "")
+
     def test_single_table_add_edit_search_and_batch_delete(self):
         table = self.window.table
         self.assertEqual([table.heading(col, "text") for col in table["columns"]], ["编码", "厂家", "条码前缀"])
+        for column in table["columns"]:
+            self.assertEqual(str(table.heading(column, "anchor")), "center")
+            self.assertEqual(str(table.column(column, "anchor")), "center")
         self.add_row("001", "甲厂", "00")
         self.add_row("001", "乙厂", "02")
         self.add_row("001", "乙厂", "03")

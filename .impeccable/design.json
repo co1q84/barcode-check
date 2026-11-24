@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedAt": "2026-11-24T14:36:59.2113534+08:00",
-  "title": "设计系统 · 条码核验",
+  "title": "设计系统 · 条码厂商校验助手",
   "extensions": {
     "colorMeta": {
       "primary": {
@@ -86,11 +86,6 @@
         "role": "neutral",
         "displayName": "表头蓝灰",
         "tonalRamp": ["oklch(15% 0.003 255.5)", "oklch(26% 0.006 255.5)", "oklch(38% 0.010 255.5)", "oklch(49% 0.012 255.5)", "oklch(61% 0.011 255.5)", "oklch(72% 0.009 255.5)", "oklch(84% 0.005 255.5)", "oklch(95% 0.002 255.5)"]
-      },
-      "progress-track": {
-        "role": "neutral",
-        "displayName": "进度轨道蓝灰",
-        "tonalRamp": ["oklch(15% 0.006 259.8)", "oklch(26% 0.012 259.8)", "oklch(38% 0.018 259.8)", "oklch(49% 0.022 259.8)", "oklch(61% 0.022 259.8)", "oklch(72% 0.017 259.8)", "oklch(84% 0.010 259.8)", "oklch(95% 0.004 259.8)"]
       }
     },
     "typographyMeta": {

@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from barcode_check.settings import BaseRow, Settings, SettingsStore, delete_rows, edit_row
+from barcode_check.settings import BaseRow, Settings, SettingsReadError, SettingsStore, delete_rows, edit_row
 
 
 class SettingsTests(unittest.TestCase):
@@ -15,6 +15,14 @@ class SettingsTests(unittest.TestCase):
     def test_match_uses_longest_prefix(self):
         self.assertEqual(self.settings.match("01299"), BaseRow("002", "乙厂", "012"))
         self.assertIsNone(self.settings.match("999"))
+
+    def test_prefix_matching_preserves_group_separators_at_both_ends(self):
+        leading = BaseRow("001", "甲厂", "\x1dAA")
+        trailing = BaseRow("002", "乙厂", "AA\x1d")
+        settings = Settings((leading, trailing))
+        self.assertIs(settings.match("\x1dAAother"), leading)
+        self.assertIs(settings.match("AA\x1dother"), trailing)
+        self.assertIsNone(settings.match("AAother"))
 
     def test_duplicate_pair_and_duplicate_exact_prefix_are_rejected(self):
         for row in (BaseRow("002", "乙厂", "05"), BaseRow("003", "乙厂", "01")):
@@ -47,11 +55,65 @@ class SettingsTests(unittest.TestCase):
             path = Path(directory) / "settings.json"
             path.write_bytes(b"{invalid}")
             store = SettingsStore(path)
-            with self.assertRaises(ValueError):
+            with self.assertRaises(SettingsReadError):
                 store.load()
-            with self.assertRaises(ValueError):
+            with self.assertRaises(SettingsReadError):
                 store.save(self.settings)
             self.assertEqual(path.read_bytes(), b"{invalid}")
+            self.assertEqual(set(path.parent.glob("*.json")), {path})
+
+    def test_explicit_recovery_backs_up_original_bytes_before_writing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "settings.json"
+            original = b'\xef\xbb\xbf{"version": 1, "unused": "original bytes"}\r\n'
+            path.write_bytes(original)
+            store = SettingsStore(path)
+            with self.assertRaises(ValueError):
+                store.load()
+
+            replace_file = Path.replace
+
+            def replace_after_backup(source, target):
+                backups = [candidate for candidate in path.parent.glob("*.json") if candidate != path]
+                self.assertEqual([backup.read_bytes() for backup in backups], [original])
+                return replace_file(source, target)
+
+            with patch.object(Path, "replace", new=replace_after_backup):
+                backup = store.recover(self.settings)
+
+            self.assertEqual(backup.parent, path.parent)
+            self.assertEqual(backup.read_bytes(), original)
+            self.assertEqual(SettingsStore(path).load(), self.settings)
+            store.save(Settings())
+            self.assertEqual(backup.read_bytes(), original)
+
+    def test_recovery_protects_changes_made_since_loading_invalid_data(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "settings.json"
+            path.write_bytes(b"{old invalid data}")
+            first = SettingsStore(path)
+            second = SettingsStore(path)
+            for store in (first, second):
+                with self.assertRaises(ValueError):
+                    store.load()
+
+            backup = first.recover(self.settings)
+            with self.assertRaisesRegex(ValueError, "已有变更"):
+                second.recover(Settings())
+
+            self.assertEqual(set(path.parent.glob("*.json")), {path, backup})
+            self.assertEqual(SettingsStore(path).load(), self.settings)
+
+    def test_read_os_errors_are_not_recovery_candidates(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "settings.json"
+            store = SettingsStore(path)
+            with patch.object(Path, "read_bytes", side_effect=PermissionError("access denied")):
+                with self.assertRaises(PermissionError):
+                    store.load()
+            with self.assertRaises(ValueError):
+                store.recover(self.settings)
+            self.assertFalse(path.exists())
 
     def test_save_refuses_to_overwrite_another_instances_changes(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -5,10 +5,12 @@ from collections.abc import Callable
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-from .batch import BARCODE_INPUT_PADDING, is_valid_barcode
-from .settings import BaseRow, Settings, delete_rows, edit_row
+from . import APP_NAME
+from .batch import is_valid_barcode
+from .settings import BARCODE_INPUT_PADDING, BaseRow, Settings, SettingsSaveCancelled, delete_rows, edit_row
 from .settings_xlsx import COLUMNS, import_settings_workbook, write_settings_workbook
 from .theme import BG, ERROR, MUTED, SUCCESS, SURFACE
+from .window_layout import center_dialog
 
 
 EXCEL_FILETYPE = [("Excel 工作簿", "*.xlsx")]
@@ -25,11 +27,11 @@ def _desktop_size(window: tk.Misc, width: int, height: int) -> tuple[int, int]:
 class SettingsWindow(tk.Toplevel):
     def __init__(self, parent: tk.Misc, settings: Settings, on_save: Callable[[Settings], None]):
         super().__init__(parent, background=BG)
-        self.title("设置 · 条码核验")
+        self.withdraw()
+        self.title(f"设置 · {APP_NAME}")
         self.transient(parent)
         self.minsize(*_desktop_size(self, 680, 400))
         width, height = _desktop_size(self, 880, 550)
-        self.geometry(f"{width}x{height}")
         self.settings = settings
         self.on_save = on_save
         self.visible_rows: dict[str, BaseRow] = {}
@@ -76,6 +78,8 @@ class SettingsWindow(tk.Toplevel):
         ttk.Button(footer, text="关闭", command=self.destroy).pack(side="right")
         self.search.trace_add("write", self._filter)
         self.refresh()
+        center_dialog(self, parent, width, height)
+        self.deiconify()
         self.search_entry.focus_set()
 
     def _build_table(self, parent):
@@ -84,10 +88,10 @@ class SettingsWindow(tk.Toplevel):
         area.columnconfigure(0, weight=1)
         area.rowconfigure(0, weight=1)
         columns = ("code", "manufacturer", "prefix")
-        self.table = ttk.Treeview(area, columns=columns, show="headings", selectmode="extended")
+        self.table = ttk.Treeview(area, columns=columns, show="headings", selectmode="extended", style="Grid.Treeview")
         for column, heading, width in zip(columns, COLUMNS, (160, 245, 310)):
-            self.table.heading(column, text=heading, anchor="w")
-            self.table.column(column, width=width, minwidth=90, stretch=True, anchor="w")
+            self.table.heading(column, text=heading, anchor="center")
+            self.table.column(column, width=width, minwidth=90, stretch=True, anchor="center")
         vertical = ttk.Scrollbar(area, orient="vertical", command=self.table.yview)
         horizontal = ttk.Scrollbar(area, orient="horizontal", command=self.table.xview)
         self.table.configure(yscrollcommand=vertical.set, xscrollcommand=horizontal.set)
@@ -167,6 +171,8 @@ class SettingsWindow(tk.Toplevel):
             return
         try:
             self.save_settings(delete_rows(self.settings, selected))
+        except SettingsSaveCancelled:
+            return
         except (OSError, ValueError) as error:
             messagebox.showerror("删除失败", str(error), parent=self)
             return
@@ -195,6 +201,8 @@ class SettingsWindow(tk.Toplevel):
             updated = import_settings_workbook(Path(filename), self.settings)
             added = len(updated.rows) - len(self.settings.rows)
             self.save_settings(updated)
+        except SettingsSaveCancelled:
+            return
         except (OSError, ValueError) as error:
             messagebox.showerror("导入失败", str(error), parent=self)
             return
@@ -231,7 +239,6 @@ class BaseRowEditor(tk.Toplevel):
             entry.grid(row=index, column=1, sticky="ew", pady=3)
             if index == 0:
                 first_entry = entry
-        entry.bind("<Return>", lambda _event: self._save())
         ttk.Separator(body).grid(row=3, column=0, columnspan=2, sticky="ew", pady=11)
 
         ttk.Label(body, text="试扫条码", style="White.TLabel").grid(row=4, column=0, sticky="w")
@@ -260,7 +267,11 @@ class BaseRowEditor(tk.Toplevel):
         first_entry.selection_range(0, "end")
 
     def _candidate(self) -> Settings:
-        row = BaseRow(self.code.get().strip(), self.manufacturer.get().strip(), self.prefix.get().strip())
+        row = BaseRow(
+            self.code.get().strip(),
+            self.manufacturer.get().strip(),
+            self.prefix.get().strip(BARCODE_INPUT_PADDING),
+        )
         return edit_row(self.owner.settings, self.original, row)
 
     def _try_sample(self) -> None:
@@ -284,6 +295,9 @@ class BaseRowEditor(tk.Toplevel):
     def _save(self) -> None:
         try:
             self.owner.save_settings(self._candidate())
+        except SettingsSaveCancelled:
+            self.error.set("")
+            return
         except (OSError, ValueError) as error:
             self.error.set(str(error))
             return

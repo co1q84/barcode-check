@@ -9,12 +9,13 @@ from typing import Iterable
 
 RECORD_PAGE_SIZES = (20, 50, 100)
 DEFAULT_RECORDS_PER_PAGE = 20
+BARCODE_INPUT_PADDING = " \t\r\n"
 
 
-def _validate_setting_text(value: str, label: str) -> None:
-    if not isinstance(value, str) or not value.strip() or any(c in value for c in "\r\n\0\v\f\u0085\u2028\u2029"):
+def _validate_setting_text(value: str, label: str, padding: str | None = None) -> None:
+    if not isinstance(value, str) or not value.strip(padding) or any(c in value for c in "\r\n\0\v\f\u0085\u2028\u2029"):
         raise ValueError(f"{label}须为非空的单行文本。")
-    if value != value.strip():
+    if value != value.strip(padding):
         raise ValueError(f"{label}不能含首尾空白。")
     try:
         length = len(value.encode("utf-16-le")) // 2
@@ -33,7 +34,7 @@ class BaseRow:
     def __post_init__(self):
         _validate_setting_text(self.code, "编码")
         _validate_setting_text(self.manufacturer, "厂家")
-        _validate_setting_text(self.prefix, "条码前缀")
+        _validate_setting_text(self.prefix, "条码前缀", BARCODE_INPUT_PADDING)
 
     @property
     def key(self) -> tuple[str, str]:
@@ -109,10 +110,19 @@ def _write_lock(path: Path):
         yield
 
 
+class SettingsReadError(ValueError):
+    """The file was read but its contents could not be used."""
+
+
+class SettingsSaveCancelled(Exception):
+    """The user canceled a save that needs confirmation."""
+
+
 class SettingsStore:
     def __init__(self, path: Path | None = None):
         self.path = path if path is not None else user_settings_path()
         self._revision: bytes | None = None
+        self._invalid_revision = False
 
     def _read(self) -> bytes | None:
         try:
@@ -124,6 +134,7 @@ class SettingsStore:
         data = self._read()
         if data is None:
             self._revision = None
+            self._invalid_revision = False
             return Settings()
         try:
             value = json.loads(data)
@@ -135,31 +146,63 @@ class SettingsStore:
                 raise ValueError("缺少有效的条码基表数据。")
             rows = tuple(BaseRow(**item) for item in stored_rows)
             settings = Settings(rows, records_per_page=value["records_per_page"])
-        except (KeyError, TypeError, ValueError) as error:
-            raise ValueError(f"无法读取设置文件「{self.path}」：{error}") from error
+        except (KeyError, TypeError, ValueError, RecursionError) as error:
+            self._revision = data
+            self._invalid_revision = True
+            raise SettingsReadError(f"无法读取设置文件「{self.path}」：{error}") from error
         self._revision = data
+        self._invalid_revision = False
         return settings
 
     def save(self, settings: Settings) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with _write_lock(self.path.with_suffix(".lock")):
+            self._verify_revision()
+            if self._invalid_revision:
+                raise SettingsReadError("当前设置文件无法读取。请先备份原文件并恢复设置。")
+            self._replace(settings)
+
+    def recover(self, settings: Settings) -> Path:
+        """Back up the invalid file observed by load and save its replacement."""
+        with _write_lock(self.path.with_suffix(".lock")):
+            original = self._verify_revision()
+            if not self._invalid_revision or original is None:
+                raise ValueError("当前设置无需恢复。")
+            backup = self._write_copy(original, f"{self.path.stem}-backup-", self.path.suffix)
+            self._replace(settings)
+            return backup
+
+    def _verify_revision(self) -> bytes | None:
+        data = self._read()
+        if data != self._revision:
+            raise ValueError("设置文件已有变更。请关闭程序后重新打开，再保存设置。")
+        return data
+
+    def _replace(self, settings: Settings) -> None:
         payload = {
             "version": 2,
             "rows": [asdict(row) for row in settings.rows],
             "records_per_page": settings.records_per_page,
         }
         data = (json.dumps(payload, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        with _write_lock(self.path.with_suffix(".lock")):
-            if self._read() != self._revision:
-                raise ValueError("设置文件已有变更。请关闭程序后重新打开，再保存设置。")
-            temporary_path = None
-            try:
-                with NamedTemporaryFile(dir=self.path.parent, prefix="settings-", suffix=".tmp", delete=False) as file:
-                    temporary_path = Path(file.name)
-                    file.write(data)
-                    file.flush()
-                    os.fsync(file.fileno())
-                temporary_path.replace(self.path)
-                self._revision = data
-            finally:
-                if temporary_path is not None:
-                    temporary_path.unlink(missing_ok=True)
+        temporary_path = self._write_copy(data, "settings-", ".tmp")
+        try:
+            temporary_path.replace(self.path)
+            self._revision = data
+            self._invalid_revision = False
+        finally:
+            temporary_path.unlink(missing_ok=True)
+
+    def _write_copy(self, data: bytes, prefix: str, suffix: str) -> Path:
+        path = None
+        try:
+            with NamedTemporaryFile(dir=self.path.parent, prefix=prefix, suffix=suffix, delete=False) as file:
+                path = Path(file.name)
+                file.write(data)
+                file.flush()
+                os.fsync(file.fileno())
+            return path
+        except BaseException:
+            if path is not None:
+                path.unlink(missing_ok=True)
+            raise

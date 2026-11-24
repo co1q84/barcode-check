@@ -6,6 +6,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from xml.etree.ElementTree import ParseError, iterparse
 from zipfile import BadZipFile
+from zlib import error as ZlibError
 
 from openpyxl import Workbook
 from openpyxl.cell.rich_text import CellRichText
@@ -18,7 +19,7 @@ from openpyxl.utils.escape import unescape
 from openpyxl.utils.exceptions import InvalidFileException
 from openpyxl.xml.constants import REL_NS, SHARED_STRINGS, SHEET_MAIN_NS
 
-from .settings import BaseRow, Settings
+from .settings import BARCODE_INPUT_PADDING, BaseRow, Settings
 
 
 COLUMNS = ("编码", "厂家", "条码前缀")
@@ -105,7 +106,7 @@ def import_settings_workbook(path: Path, settings: Settings) -> Settings:
                     shared_strings = [_xml_text(item) for item in _xml_children(source, "sst", "si")]
             with reader.archive.open(sheet.Target) as source:
                 return _import_rows(_worksheet_rows(source, shared_strings, number_formats), settings)
-    except (BadZipFile, InvalidFileException, KeyError, ParseError) as error:
+    except (BadZipFile, InvalidFileException, KeyError, ParseError, ZlibError) as error:
         raise ValueError("无法读取 Excel 工作簿。请选择有效的 .xlsx 文件。") from error
 
 
@@ -232,7 +233,7 @@ def _import_rows(rows, settings: Settings) -> Settings:
         for column, label in enumerate(COLUMNS, 1):
             value = cells.get(column)
             if isinstance(value, str):
-                value = value.strip()
+                value = value.strip(BARCODE_INPUT_PADDING if column == 3 else None)
             if value is None or value == "":
                 raise ValueError(f"第 {line} 行「{label}」不能为空。")
             if not isinstance(value, str):
